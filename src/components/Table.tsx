@@ -27,7 +27,7 @@ const Table: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<any>("");
   const [selectedArtworks, setSelectedArtworks] = useState<Artwork[]>([]);
-  const [rowClick, setRowClick] = useState<boolean>(true);
+  const [rowClick] = useState<boolean>(true);
   const [visible, setVisible] = useState<boolean>(false);
   const [input, setInput] = useState<number | null>(null)
 
@@ -75,7 +75,7 @@ const Table: React.FC = () => {
         const oldSelection = JSON.parse(localStorage.getItem("selectedArtworks") || "[]");
         const merged = [
           ...oldSelection,
-          ...newSelection.filter(n => !oldSelection.some(o => o.id === n.id)),
+          ...newSelection.filter(n => n.id !== undefined && !oldSelection.some((o: Artwork) => o.id !== undefined && o.id === n.id)),
         ];
 
         setSelectedArtworks(merged);
@@ -149,7 +149,7 @@ const Table: React.FC = () => {
       const oldSelection = JSON.parse(localStorage.getItem("selectedArtworks") || "[]");
       const merged = [
         ...oldSelection,
-        ...newSelection.filter(n => !oldSelection.some(o => o.id === n.id)),
+        ...newSelection.filter(n => n.id !== undefined && !oldSelection.some((o: Artwork) => o.id !== undefined && o.id === n.id)),
       ];
 
       setSelectedArtworks(merged);
@@ -211,12 +211,13 @@ const Table: React.FC = () => {
       }
 
       <DataTable
+        cellSelection={false}
         value={artWork}
         loading={loading}
         stripedRows
         showGridlines
         tableStyle={{ minWidth: "70rem" }}
-        selectionMode={rowClick ? undefined : 'multiple'} selection={selectedArtworks!}
+        selectionMode={rowClick ? null : 'multiple'} selection={selectedArtworks!}
         onSelectionChange={(e: DataTableSelectionMultipleChangeEvent<Artwork[]>) => {
           setSelectedArtworks(e.value);
 
