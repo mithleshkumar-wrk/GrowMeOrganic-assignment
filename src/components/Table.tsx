@@ -9,8 +9,6 @@ import { FaAngleDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { Dialog } from 'primereact/dialog';
 
 
-
-
 interface Artwork {
   id?: number;
   title?: string;
@@ -64,33 +62,31 @@ const Table: React.FC = () => {
   useEffect(() => {
     const savedSelectionCount = localStorage.getItem("totalSelectedCount");
     const totalSelectedCount = savedSelectionCount ? Number(savedSelectionCount) : 0;
-    // console.log(totalSelectedCount);
 
-
-
-    // console.log("artwork length", artWork.length)
     if (totalSelectedCount > 0 && artWork.length > 0) {
       const startIndex = (page - 1) * 12;
-      const endIndex = startIndex + 12;
+      // const endIndex = startIndex + 12;
 
       if (startIndex < totalSelectedCount) {
-        const newSelection = artWork.filter((_, idx) => startIndex + idx < totalSelectedCount);
-        console.log("newselectionpage", newSelection);
-        // Make sure old selection exists and remove duplicates
+        const remaining = totalSelectedCount - startIndex;
+        const itemsToSelect = Math.min(remaining, artWork.length);
+        const newSelection = artWork.slice(0, itemsToSelect);
+
         const oldSelection = JSON.parse(localStorage.getItem("selectedArtworks") || "[]");
-        setSelectedArtworks(newSelection);
         const merged = [
           ...oldSelection,
-          ...newSelection.filter(
-            n => !oldSelection.some(o => o.id === n.id)
-          ),
+          ...newSelection.filter(n => !oldSelection.some(o => o.id === n.id)),
         ];
 
         setSelectedArtworks(merged);
         localStorage.setItem("selectedArtworks", JSON.stringify(merged));
-      }
 
-      if (totalSelectedCount <= endIndex && totalSelectedCount >= endIndex - 12) {
+        // When all items selected, reset totalSelectedCount
+        if (merged.length >= totalSelectedCount) {
+          localStorage.removeItem("totalSelectedCount");
+        }
+      } else {
+        // Past selection range — stop auto-select
         localStorage.removeItem("totalSelectedCount");
       }
     }
@@ -115,6 +111,7 @@ const Table: React.FC = () => {
   useEffect(() => {
     const saved = localStorage.getItem("selectedArtworks");
     if (saved) setSelectedArtworks(JSON.parse(saved));
+
   }, []);
 
   // save selectedArtWork in local storage
@@ -136,20 +133,28 @@ const Table: React.FC = () => {
   const handleSubmit = () => {
     if (!input || input <= 0) return;
 
-    const totalToSelect = input;
+    // Save total number to select
+    localStorage.setItem("totalSelectedCount", input.toString());
 
-    // Save total number user wants to select
-    localStorage.setItem("totalSelectedCount", totalToSelect.toString());
-
-    // Calculate how many items belong to this page
+    const totalSelectedCount = input;
     const startIndex = (page - 1) * 12;
-    const endIndex = startIndex + 12;
+    // const endIndex = startIndex + 12;
 
-    // Select artworks that fall within totalToSelect limit
-    const newSelection = artWork.filter((_, idx) => startIndex + idx < totalToSelect);
+    // Determine what part of global selection belongs to this page
+    if (startIndex < totalSelectedCount) {
+      const remaining = totalSelectedCount - startIndex;
+      const itemsToSelect = Math.min(remaining, 12);
+      const newSelection = artWork.slice(0, itemsToSelect);
 
-    setSelectedArtworks(newSelection);
-    localStorage.setItem("selectedArtworks", JSON.stringify(newSelection));
+      const oldSelection = JSON.parse(localStorage.getItem("selectedArtworks") || "[]");
+      const merged = [
+        ...oldSelection,
+        ...newSelection.filter(n => !oldSelection.some(o => o.id === n.id)),
+      ];
+
+      setSelectedArtworks(merged);
+      localStorage.setItem("selectedArtworks", JSON.stringify(merged));
+    }
 
     setVisible(false);
     setInput(null);
@@ -165,7 +170,6 @@ const Table: React.FC = () => {
   }
 
 
-
   return (
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-4">🎨 Artworks Table</h2>
@@ -173,14 +177,36 @@ const Table: React.FC = () => {
       {
         visible && (
           <div className="card flex justify-content-center">
-
-            <Dialog header="Enter Number to select rows" visible={visible} style={{ width: '50vw' }} onHide={() => { if (!visible) return; setVisible(false); }}>
-
-              <input onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(Number(e.target.value))} className='border py-1 rounded-2xl px-4 ' placeholder='Enter any number... ' type="number" />
-
-              <button disabled={!input || input <= 0} onClick={handleSubmit} className='ml-4 rounded-2xl px-4 cursor-pointer py-1 text-white bg-blue-500 active:bg-blue-300 '>Submit</button>
+            <Dialog
+              header="Enter Number to select rows"
+              visible={visible}
+              style={{ width: '50vw' }}
+              onHide={() => { if (!visible) return; setVisible(false); }}
+            >
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+                className="flex"
+              >
+                <input
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(Number(e.target.value))}
+                  className='border py-1 rounded-2xl px-4'
+                  placeholder='Enter any number...'
+                  type="number"
+                />
+                <button
+                  type="submit"
+                  disabled={!input || input <= 0}
+                  className='ml-4 rounded-2xl px-4 cursor-pointer py-1 text-white bg-blue-500 active:bg-blue-300'
+                >
+                  Submit
+                </button>
+              </form>
             </Dialog>
           </div>
+
         )
       }
 
@@ -191,9 +217,18 @@ const Table: React.FC = () => {
         showGridlines
         tableStyle={{ minWidth: "70rem" }}
         selectionMode={rowClick ? undefined : 'multiple'} selection={selectedArtworks!}
-        onSelectionChange={(e: DataTableSelectionMultipleChangeEvent<Artwork[]>) =>
-          setSelectedArtworks(e.value)
-        }
+        onSelectionChange={(e: DataTableSelectionMultipleChangeEvent<Artwork[]>) => {
+          setSelectedArtworks(e.value);
+
+          // User override (deselect or manual select)
+          if (e.value.length > 0) {
+            localStorage.setItem("selectedArtworks", JSON.stringify(e.value));
+          } else {
+            localStorage.removeItem("selectedArtworks");
+          }
+        }}
+
+
       >
         <Column
           header={selectionHeader}
