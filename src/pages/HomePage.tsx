@@ -9,7 +9,7 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex justify-center items-center py-24 bg-linear-to-r from-yellow-100 via-pink-100 to-red-100">
+    <div className="flex justify-center items-center h-screen bg-linear-to-r from-yellow-100 via-pink-100 to-red-100">
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
